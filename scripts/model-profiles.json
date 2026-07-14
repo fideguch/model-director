@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "note": "Configurable routing assumptions — NOT provider-published capability or quota claims. Edit freely.",
+  "models": {
+    "fable": {
+      "provider": "anthropic", "via": "claude-code",
+      "cost": 5, "scarcity": 5,
+      "roles": ["planning", "review"], "min_complexity": "high",
+      "strengths": ["deep planning", "synthesis", "adjudication"],
+      "weaknesses": ["scarce", "wasteful on execution"]
+    },
+    "opus": {
+      "provider": "anthropic", "via": "claude-code",
+      "cost": 4, "scarcity": 4,
+      "roles": ["planning", "execution", "review"], "min_complexity": "medium",
+      "strengths": ["autonomous complex execution", "long-form writing"],
+      "weaknesses": ["expensive"]
+    },
+    "sonnet": {
+      "provider": "anthropic", "via": "claude-code",
+      "cost": 2, "scarcity": 1,
+      "roles": ["execution", "review"], "min_complexity": "low",
+      "strengths": ["fast balanced coding"],
+      "weaknesses": ["less reliable on frontier design"]
+    },
+    "gpt-5.6-sol": {
+      "provider": "openai", "via": "codex",
+      "cost": 4, "scarcity": 3,
+      "roles": ["planning", "review", "execution"], "min_complexity": "medium",
+      "strengths": ["strong reasoning/review", "fable substitute", "architecture"],
+      "weaknesses": ["costly", "slower"]
+    },
+    "gpt-5.6-terra": {
+      "provider": "openai", "via": "codex",
+      "cost": 3, "scarcity": 1,
+      "roles": ["execution", "review"], "min_complexity": "low",
+      "strengths": ["balanced coding and analysis"],
+      "weaknesses": ["less deep than sol"]
+    },
+    "gpt-5.6-luna": {
+      "provider": "openai", "via": "codex",
+      "cost": 1, "scarcity": 1,
+      "roles": ["execution"], "min_complexity": "low",
+      "strengths": ["fast mechanical work"],
+      "weaknesses": ["weakest complex reasoning"]
+    }
+  },
+  "fallback_chains": {
+    "planning": {
+      "frontier": ["fable", "gpt-5.6-sol", "opus"],
+      "high": ["fable", "gpt-5.6-sol", "opus"],
+      "medium": ["gpt-5.6-sol", "opus", "sonnet"],
+      "low": ["gpt-5.6-sol", "opus", "sonnet"]
+    },
+    "review": {
+      "frontier": ["gpt-5.6-sol", "fable", "opus"],
+      "high": ["gpt-5.6-sol", "fable", "opus"],
+      "medium": ["gpt-5.6-terra", "sonnet", "gpt-5.6-luna"],
+      "low": ["gpt-5.6-terra", "sonnet"]
+    },
+    "execution": {
+      "frontier": ["opus", "gpt-5.6-terra", "gpt-5.6-sol"],
+      "high": ["opus", "gpt-5.6-terra", "gpt-5.6-sol"],
+      "medium": ["sonnet", "gpt-5.6-terra", "opus"],
+      "low": ["gpt-5.6-luna", "sonnet", "gpt-5.6-terra"]
+    }
+  },
+  "policy": {
+    "fable_min_remaining_ratio": 0.35,
+    "safety_reserve_ratio": 0.25,
+    "fable_unavailable_substitute": "gpt-5.6-sol",
+    "cross_model_review_prefers_different_provider": true
+  },
+  "subscriptions": {
+    "anthropic": {
+      "windows": [
+        {
+          "id": "rolling-5h", "duration_sec": 18000,
+          "soft_budget": {
+            "fable": { "calls": 12, "tokens": 120000 },
+            "opus": { "calls": 40, "tokens": 400000 },
+            "sonnet": { "calls": 100, "tokens": 1000000 }
+          }
+        }
+      ]
+    },
+    "openai": {
+      "windows": [
+        {
+          "id": "rolling-5h", "duration_sec": 18000,
+          "soft_budget": {
+            "gpt-5.6-sol": { "calls": 30, "tokens": 500000 },
+            "gpt-5.6-terra": { "calls": 60, "tokens": 800000 },
+            "gpt-5.6-luna": { "calls": 120, "tokens": 1200000 }
+          }
+        }
+      ]
+    }
+  }
+}

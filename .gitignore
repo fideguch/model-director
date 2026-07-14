@@ -1,0 +1,11 @@
+# Local runtime state (never committed)
+ledger.json
+.model-director/
+.fable/
+
+# Node / tooling
+node_modules/
+*.log
+
+# OS
+.DS_Store
