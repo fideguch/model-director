@@ -102,3 +102,36 @@ test('a fresh low-remaining observation makes a model unavailable', () => {
     assert.notEqual(JSON.parse(out.toString()).chosen, 'gpt-5.6-sol');
   });
 });
+
+test('an observation is discounted by usage recorded since (fix #2)', () => {
+  withHome((home) => {
+    const env = { ...process.env, MODEL_DIRECTOR_HOME: home };
+    const rec = (o) => execFileSync('node', [ENGINE, 'record'], { input: JSON.stringify(o), env });
+    rec({ provider: 'openai', model: 'gpt-5.6-sol', remaining_ratio: 0.6 });              // observe 0.6
+    rec({ provider: 'openai', model: 'gpt-5.6-sol', input_tokens: 200000, output_tokens: 0 }); // spend 0.4 of 500k budget
+    const dec = JSON.parse(
+      execFileSync('node', [ENGINE, 'decide'], { input: JSON.stringify({ role: 'review', complexity: 'high' }), env }).toString()
+    );
+    const rr = dec.quota_snapshot['gpt-5.6-sol'].remaining_ratio;
+    assert.ok(rr <= 0.25, `expected discounted remaining <= 0.25, got ${rr}`);
+  });
+});
+
+test('last-resort never resurrects a hard-rejected model (fix #3)', () => {
+  withHome((home) => {
+    const env = { ...process.env, MODEL_DIRECTOR_HOME: home };
+    const rec = (o) => execFileSync('node', [ENGINE, 'record'], { input: JSON.stringify(o), env });
+    // Push sol and opus just below the 25% reserve (still >0) so only the
+    // reserve blocks them; Fable is hard-rejected via availability.
+    rec({ provider: 'openai', model: 'gpt-5.6-sol', input_tokens: 400000, output_tokens: 0 }); // 0.8 of 500k
+    rec({ provider: 'anthropic', model: 'opus', input_tokens: 320000, output_tokens: 0 });     // 0.8 of 400k
+    const dec = JSON.parse(
+      execFileSync('node', [ENGINE, 'decide'], {
+        input: JSON.stringify({ role: 'planning', complexity: 'high', availability: { fable: false } }),
+        env,
+      }).toString()
+    );
+    assert.equal(dec.last_resort, true);
+    assert.notEqual(dec.chosen, 'fable');
+  });
+});

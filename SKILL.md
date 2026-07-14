@@ -11,7 +11,7 @@ description: >-
   planner/executor split.
 license: MIT
 metadata:
-  version: 0.1.0
+  version: 0.1.1
   depends-on: "claude-to-codex (>=0.1.1); OpenAI Codex CLI (>=0.144.4, authed); Node.js"
 ---
 
